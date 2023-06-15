@@ -37,12 +37,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
        var savedUser = repository.save(user);
 
         var jwtToken = jwtService.generateToken(user);
+        revokeAllUserTokens(user);
 
         saveUserToken(savedUser, jwtToken);
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
+    }
+
+    private void revokeAllUserTokens(User user){
+        var validUserTokens = tokenRepository.findAllValidTokensByUser(user.getId());
+        if(validUserTokens.isEmpty())
+            return;
+        validUserTokens.forEach(t-> {
+            t.setExpired(true);
+            t.setRevoked(true);
+        });
+        tokenRepository.saveAll(validUserTokens);
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
